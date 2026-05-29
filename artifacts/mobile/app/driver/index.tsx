@@ -175,7 +175,7 @@ export default function DriverHomeScreen() {
       </ScrollView>
 
       {/* Bottom Buttons */}
-      <View style={[styles.bottomBar, { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8, borderTopColor: colors.border, backgroundColor: colors.background }]}>
+      <View style={[styles.bottomBar, { paddingBottom: Platform.OS === "web" ? 96 : insets.bottom + 57, borderTopColor: colors.border, backgroundColor: colors.background }]}>
         {currentLoad.status === "en_route" && (
           <Pressable
             onPress={handleSimulate}

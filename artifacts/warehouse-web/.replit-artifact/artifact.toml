@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/warehouse-web/"
+title = "DockFlow — Warehouse Staff"
+version = "1.0.0"
+id = "artifacts/warehouse-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/warehouse-web/" ]
+localPort = 18801
+
+[services.development]
+run = "pnpm --filter @workspace/warehouse-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/warehouse-web", "run", "build" ]
+publicDir = "artifacts/warehouse-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18801"
+BASE_PATH = "/warehouse-web/"
