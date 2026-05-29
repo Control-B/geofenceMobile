@@ -1,0 +1,531 @@
+# Build a Mobile-First Driver & Warehouse Arrival Coordination Platform
+
+Act as a Principal Product Architect, Principal Mobile Engineer, Senior UX Designer, and Enterprise Logistics Software Engineer.
+
+Build a production-grade mobile-first platform focused on solving warehouse and facility arrival, check-in, loading, unloading, dock assignment, and departure workflows.
+
+This is NOT a fleet tracking platform.
+
+Drivers already use systems like Samsara, Motive, Geotab, and ELD solutions for vehicle tracking.
+
+This platform focuses on the operational gap between:
+
+Driver Arrival
+→ Warehouse Check-In
+→ Dock Assignment
+→ Loading/Unloading
+→ Departure
+
+The platform should become the industry's easiest and fastest way for drivers and warehouses to coordinate arrivals.
+
+---
+
+# Product Vision
+
+Create the "Uber of Warehouse Check-In."
+
+The experience should be:
+
+* Extremely simple for drivers
+* Extremely efficient for warehouses
+* Mobile-first
+* Event-driven
+* Geofence-aware
+* Enterprise scalable
+
+The goal is to reduce:
+
+* Driver waiting
+* Manual check-ins
+* Phone calls
+* Radio communication
+* Clipboard processes
+* Gate congestion
+* Dock delays
+
+---
+
+# Primary Users
+
+1. Drivers
+2. Warehouse Personnel
+3. Yard Managers
+4. Gate Attendants
+
+Dispatchers are secondary users.
+
+Do not build the platform around dispatchers.
+
+---
+
+# Technology Stack
+
+Frontend Mobile:
+
+* React Native
+* Expo
+* TypeScript
+
+Maps:
+
+iOS:
+
+* Apple MapKit
+
+Android:
+
+* Google Maps SDK
+
+Backend:
+
+* ASP.NET Core
+* Azure Functions
+* Azure Service Bus
+* Azure Event Grid
+
+Database:
+
+* PostgreSQL
+
+Caching:
+
+* Redis
+
+Notifications:
+
+* Azure Communication Services
+* Push Notifications
+
+Authentication:
+
+* Microsoft Entra ID
+* Email Login
+* Fleet Accounts
+* Warehouse Accounts
+
+---
+
+# Driver Mobile Application
+
+The driver app is the primary product.
+
+---
+
+## Home Screen
+
+Display:
+
+Current Load
+
+Pickup Facility
+
+Delivery Facility
+
+Appointment Time
+
+Current Status
+
+ETA
+
+Distance Remaining
+
+Large Primary Action:
+
+Navigate
+
+The map should be simple and clean.
+
+Do not create a complicated trucking map.
+
+---
+
+## Geofence Arrival Detection
+
+When a driver enters a facility geofence:
+
+Automatically:
+
+* Detect arrival
+* Create arrival event
+* Store GPS coordinates
+* Record timestamp
+* Notify warehouse
+
+Display:
+
+You Have Arrived
+
+Facility Name
+
+Arrival Time
+
+Appointment Time
+
+Current Queue Position
+
+---
+
+## Mobile Check-In
+
+Replace paper check-in.
+
+Driver enters:
+
+Trailer Number
+
+Load Number
+
+Reference Number
+
+Purchase Order
+
+Optional Notes
+
+Allow QR Code Scanning.
+
+Allow Barcode Scanning.
+
+Allow pre-arrival digital check-in.
+
+---
+
+## Arrival Confirmation
+
+Driver receives:
+
+Arrival Confirmed
+
+Dock Assignment
+
+Queue Position
+
+Instructions
+
+Examples:
+
+Proceed To Dock 14
+
+Wait In Yard Zone B
+
+See Gate Attendant
+
+Remain In Staging Area
+
+---
+
+## Live Status Tracking
+
+Driver status flow:
+
+En Route
+
+Arrived
+
+Checked In
+
+Waiting
+
+Dock Assigned
+
+At Dock
+
+Loading
+
+Unloading
+
+Completed
+
+Departed
+
+Every event stores:
+
+Timestamp
+
+GPS Location
+
+User
+
+Facility
+
+---
+
+## Driver Notifications
+
+Examples:
+
+Dock Assigned
+
+Loading Ready
+
+Warehouse Delay
+
+Gate Closed
+
+Appointment Updated
+
+Ready To Depart
+
+---
+
+# Warehouse Portal
+
+This is the second most important product.
+
+Create a clean warehouse operations dashboard.
+
+---
+
+## Warehouse Queue View
+
+Display all arrivals.
+
+Columns:
+
+Driver
+
+Carrier
+
+Truck Number
+
+Trailer Number
+
+Load Number
+
+Arrival Time
+
+Appointment Time
+
+Current Status
+
+Assigned Dock
+
+Waiting Duration
+
+---
+
+## Dock Management
+
+Visual dock board.
+
+Show:
+
+Dock 1
+
+Dock 2
+
+Dock 3
+
+etc.
+
+Statuses:
+
+Available
+
+Reserved
+
+Occupied
+
+Delayed
+
+Out Of Service
+
+Drag and drop assignments.
+
+---
+
+## Yard Management
+
+Show:
+
+Waiting Trucks
+
+Staging Areas
+
+Overflow Areas
+
+Dock Queues
+
+Current Yard Capacity
+
+---
+
+## Check-In Console
+
+Warehouse staff can:
+
+Approve Check-In
+
+Reject Check-In
+
+Assign Dock
+
+Send Instructions
+
+Mark Loading Started
+
+Mark Loading Complete
+
+Mark Departure
+
+---
+
+# Geofence Engine
+
+Backend controls all geofencing.
+
+Do not depend on map providers for business logic.
+
+Store:
+
+Facility Coordinates
+
+Facility Polygons
+
+Facility Radius
+
+Arrival Thresholds
+
+Departure Thresholds
+
+Dwell Rules
+
+The backend determines:
+
+Arrived
+
+Inside Facility
+
+Departed
+
+Late Arrival
+
+Extended Dwell
+
+---
+
+# Analytics
+
+Provide warehouse-focused analytics.
+
+Metrics:
+
+Average Check-In Time
+
+Average Wait Time
+
+Average Dock Utilization
+
+Average Loading Time
+
+Average Unloading Time
+
+Average Turnaround Time
+
+Average Departure Delay
+
+Facility Throughput
+
+Carrier Performance
+
+Driver Performance
+
+---
+
+# Future Integrations
+
+Prepare architecture for:
+
+Samsara Integration
+
+Motive Integration
+
+Geotab Integration
+
+Project44 Integration
+
+FourKites Integration
+
+Microsoft Teams Integration
+
+Azure Communication Services Messaging
+
+EDI Integrations
+
+WMS Integrations
+
+TMS Integrations
+
+These integrations should consume events but should not be required for the core platform.
+
+---
+
+# UI Design Requirements
+
+Design inspiration:
+
+Uber Driver:
+
+* Simplicity
+
+Onfleet:
+
+* Clean workflows
+
+Airport Gate Systems:
+
+* Operational efficiency
+
+Modern warehouse software:
+
+* Speed and clarity
+
+Avoid:
+
+* Cluttered trucking software
+* Complex fleet management screens
+* Dispatcher-heavy workflows
+
+Prioritize:
+
+* Large buttons
+* Fast actions
+* Minimal typing
+* Mobile-first experiences
+* Real-time updates
+* Accessibility
+
+---
+
+# Scalability Requirements
+
+Support:
+
+* Millions of daily drivers
+* Thousands of warehouses
+* Millions of geofence events
+* Real-time notifications
+* Event-driven architecture
+
+Design for enterprise scale from day one.
+
+---
+
+# Outcome
+
+Build the industry's leading Driver & Warehouse Arrival Coordination Platform.
+
+Not a tracking platform.
+
+Not an ELD platform.
+
+Not a dispatch platform.
+
+A platform dedicated to:
+
+Arrival
+Check-In
+Dock Assignment
+Loading
+Unloading
+Departure
+Facility Efficiency

@@ -1,0 +1,527 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+
+export type DriverStatus =
+  | "en_route"
+  | "arrived"
+  | "checked_in"
+  | "waiting"
+  | "dock_assigned"
+  | "at_dock"
+  | "loading"
+  | "unloading"
+  | "completed"
+  | "departed";
+
+export type DockStatus =
+  | "available"
+  | "reserved"
+  | "occupied"
+  | "delayed"
+  | "out_of_service";
+
+export interface StatusEvent {
+  status: DriverStatus;
+  timestamp: Date;
+}
+
+export interface Load {
+  id: string;
+  carrier: string;
+  pickupFacility: string;
+  pickupAddress: string;
+  deliveryFacility: string;
+  deliveryAddress: string;
+  appointmentTime: Date;
+  trailerNumber: string;
+  loadNumber: string;
+  referenceNumber: string;
+  poNumber: string;
+  status: DriverStatus;
+  eta: string;
+  distance: string;
+  dockAssignment?: string;
+  queuePosition?: number;
+  instructions?: string;
+  arrivedTime?: Date;
+  checkInTime?: Date;
+  statusHistory: StatusEvent[];
+}
+
+export interface Arrival {
+  id: string;
+  driverName: string;
+  carrier: string;
+  truckNumber: string;
+  trailerNumber: string;
+  loadNumber: string;
+  referenceNumber: string;
+  arrivalTime: Date;
+  appointmentTime: Date;
+  status: DriverStatus;
+  assignedDock?: string;
+  waitingMinutes: number;
+  notes?: string;
+  checkedIn: boolean;
+  instructions?: string;
+}
+
+export interface Dock {
+  id: string;
+  name: string;
+  status: DockStatus;
+  assignedDriverName?: string;
+  assignedLoadNumber?: string;
+  assignedCarrier?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: "dock_assigned" | "loading_ready" | "delay" | "gate" | "appointment" | "departure" | "arrival";
+  title: string;
+  message: string;
+  time: Date;
+  read: boolean;
+}
+
+export interface CheckInFormData {
+  trailerNumber: string;
+  loadNumber: string;
+  referenceNumber: string;
+  poNumber: string;
+  notes: string;
+}
+
+interface AppContextType {
+  role: "driver" | "warehouse" | null;
+  roleLoaded: boolean;
+  currentLoad: Load;
+  arrivals: Arrival[];
+  docks: Dock[];
+  driverNotifications: AppNotification[];
+  unreadCount: number;
+  setRole: (role: "driver" | "warehouse") => Promise<void>;
+  clearRole: () => Promise<void>;
+  simulateArrival: () => void;
+  submitCheckIn: (data: CheckInFormData) => void;
+  approveCheckIn: (arrivalId: string, dockId: string) => void;
+  rejectCheckIn: (arrivalId: string) => void;
+  sendInstructions: (arrivalId: string, instructions: string) => void;
+  markLoadingStarted: (arrivalId: string) => void;
+  markLoadingComplete: (arrivalId: string) => void;
+  markDeparture: (arrivalId: string) => void;
+  markNotificationsRead: () => void;
+}
+
+function makeId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function minutesAgo(mins: number): Date {
+  return new Date(Date.now() - mins * 60 * 1000);
+}
+
+function todayAt(hour: number, min = 0): Date {
+  const d = new Date();
+  d.setHours(hour, min, 0, 0);
+  return d;
+}
+
+const INITIAL_LOAD: Load = {
+  id: "load-001",
+  carrier: "Alliance Transport",
+  pickupFacility: "Chicago Distribution Center",
+  pickupAddress: "1400 W Lake St, Chicago, IL 60607",
+  deliveryFacility: "Midwest Fulfillment Hub",
+  deliveryAddress: "8800 Regal Row, Dallas, TX 75247",
+  appointmentTime: todayAt(10, 30),
+  trailerNumber: "T-9234",
+  loadNumber: "LD-882341",
+  referenceNumber: "REF-445521",
+  poNumber: "PO-887234",
+  status: "en_route",
+  eta: "23 min",
+  distance: "18.4 mi",
+  statusHistory: [{ status: "en_route", timestamp: minutesAgo(95) }],
+};
+
+const INITIAL_ARRIVALS: Arrival[] = [
+  {
+    id: "arr-001",
+    driverName: "Sarah Chen",
+    carrier: "FastFreight LLC",
+    truckNumber: "IL-2934",
+    trailerNumber: "T-4521",
+    loadNumber: "LD-771204",
+    referenceNumber: "REF-334512",
+    arrivalTime: minutesAgo(45),
+    appointmentTime: todayAt(10, 0),
+    status: "at_dock",
+    assignedDock: "14",
+    waitingMinutes: 45,
+    notes: "Refrigerated — Dock 14 only",
+    checkedIn: true,
+    instructions: "Proceed to Dock 14. Refrigerated bay, use north entrance.",
+  },
+  {
+    id: "arr-002",
+    driverName: "Mike Thompson",
+    carrier: "Cornerstone Logistics",
+    truckNumber: "OH-8821",
+    trailerNumber: "T-6634",
+    loadNumber: "LD-903881",
+    referenceNumber: "REF-556782",
+    arrivalTime: minutesAgo(8),
+    appointmentTime: todayAt(10, 30),
+    status: "checked_in",
+    waitingMinutes: 8,
+    notes: "",
+    checkedIn: true,
+  },
+  {
+    id: "arr-003",
+    driverName: "David Kim",
+    carrier: "Apex Carriers",
+    truckNumber: "TX-1109",
+    trailerNumber: "T-2211",
+    loadNumber: "LD-556732",
+    referenceNumber: "REF-778901",
+    arrivalTime: minutesAgo(52),
+    appointmentTime: todayAt(9, 30),
+    status: "loading",
+    assignedDock: "08",
+    waitingMinutes: 52,
+    notes: "Heavy machinery — forklift required",
+    checkedIn: true,
+  },
+  {
+    id: "arr-004",
+    driverName: "Lisa Rodriguez",
+    carrier: "Mountain West Freight",
+    truckNumber: "CO-7743",
+    trailerNumber: "T-8890",
+    loadNumber: "LD-443215",
+    referenceNumber: "REF-112234",
+    arrivalTime: minutesAgo(15),
+    appointmentTime: todayAt(10, 30),
+    status: "dock_assigned",
+    assignedDock: "22",
+    waitingMinutes: 15,
+    notes: "",
+    checkedIn: true,
+    instructions: "Proceed to Dock 22. Use west entrance.",
+  },
+  {
+    id: "arr-005",
+    driverName: "Amanda Foster",
+    carrier: "ClearPath Logistics",
+    truckNumber: "GA-5567",
+    trailerNumber: "T-3378",
+    loadNumber: "LD-991023",
+    referenceNumber: "REF-990123",
+    arrivalTime: minutesAgo(5),
+    appointmentTime: todayAt(11, 30),
+    status: "arrived",
+    waitingMinutes: 5,
+    notes: "",
+    checkedIn: false,
+  },
+  {
+    id: "arr-006",
+    driverName: "Robert Wilson",
+    carrier: "Lakefront Transport",
+    truckNumber: "MI-3301",
+    trailerNumber: "T-1145",
+    loadNumber: "LD-667891",
+    referenceNumber: "REF-445678",
+    arrivalTime: minutesAgo(72),
+    appointmentTime: todayAt(9, 0),
+    status: "completed",
+    assignedDock: "06",
+    waitingMinutes: 72,
+    notes: "",
+    checkedIn: true,
+  },
+  {
+    id: "arr-007",
+    driverName: "Jennifer Walsh",
+    carrier: "Sunrise Carriers",
+    truckNumber: "FL-4423",
+    trailerNumber: "T-5512",
+    loadNumber: "LD-334892",
+    referenceNumber: "REF-889012",
+    arrivalTime: minutesAgo(3),
+    appointmentTime: todayAt(11, 15),
+    status: "arrived",
+    waitingMinutes: 3,
+    notes: "Two pallets, oversized",
+    checkedIn: false,
+  },
+  {
+    id: "arr-008",
+    driverName: "Carlos Nguyen",
+    carrier: "Pacific Bridge Trucking",
+    truckNumber: "CA-8834",
+    trailerNumber: "T-7721",
+    loadNumber: "LD-224567",
+    referenceNumber: "REF-334455",
+    arrivalTime: minutesAgo(0),
+    appointmentTime: todayAt(11, 0),
+    status: "en_route",
+    waitingMinutes: 0,
+    notes: "",
+    checkedIn: false,
+  },
+];
+
+const INITIAL_DOCKS: Dock[] = Array.from({ length: 24 }, (_, i) => {
+  const n = String(i + 1).padStart(2, "0");
+  const id = `dock-${n}`;
+  const name = `Dock ${n}`;
+  const presets: Record<string, Dock> = {
+    "dock-06": { id, name, status: "occupied", assignedDriverName: "Robert Wilson", assignedLoadNumber: "LD-667891", assignedCarrier: "Lakefront Transport" },
+    "dock-07": { id, name, status: "out_of_service" },
+    "dock-08": { id, name, status: "occupied", assignedDriverName: "David Kim", assignedLoadNumber: "LD-556732", assignedCarrier: "Apex Carriers" },
+    "dock-11": { id, name, status: "delayed", assignedDriverName: "Sarah Chen", assignedLoadNumber: "LD-771204", assignedCarrier: "FastFreight LLC" },
+    "dock-14": { id, name, status: "occupied", assignedDriverName: "Sarah Chen", assignedLoadNumber: "LD-771204", assignedCarrier: "FastFreight LLC" },
+    "dock-16": { id, name, status: "out_of_service" },
+    "dock-19": { id, name, status: "reserved", assignedDriverName: "Lisa Rodriguez", assignedLoadNumber: "LD-443215", assignedCarrier: "Mountain West Freight" },
+    "dock-22": { id, name, status: "reserved", assignedDriverName: "Lisa Rodriguez", assignedLoadNumber: "LD-443215", assignedCarrier: "Mountain West Freight" },
+  };
+  return presets[id] ?? { id, name, status: "available" };
+});
+
+const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: "notif-001",
+    type: "appointment",
+    title: "Appointment Reminder",
+    message: "Your appointment at Midwest Fulfillment Hub is in 30 minutes. ETA looks good.",
+    time: minutesAgo(3),
+    read: false,
+  },
+  {
+    id: "notif-002",
+    type: "gate",
+    title: "Gate Hours Updated",
+    message: "Midwest Fulfillment Hub gate closes at 6:00 PM today.",
+    time: minutesAgo(42),
+    read: true,
+  },
+  {
+    id: "notif-003",
+    type: "delay",
+    title: "Facility Delay Notice",
+    message: "Midwest Fulfillment Hub is experiencing congestion. Allow extra time for check-in.",
+    time: minutesAgo(88),
+    read: true,
+  },
+];
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [role, setRoleState] = useState<"driver" | "warehouse" | null>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
+  const [currentLoad, setCurrentLoad] = useState<Load>(INITIAL_LOAD);
+  const [arrivals, setArrivals] = useState<Arrival[]>(INITIAL_ARRIVALS);
+  const [docks, setDocks] = useState<Dock[]>(INITIAL_DOCKS);
+  const [driverNotifications, setDriverNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@dockflow_role").then((saved) => {
+      if (saved === "driver" || saved === "warehouse") setRoleState(saved);
+      setRoleLoaded(true);
+    });
+  }, []);
+
+  const setRole = useCallback(async (r: "driver" | "warehouse") => {
+    await AsyncStorage.setItem("@dockflow_role", r);
+    setRoleState(r);
+  }, []);
+
+  const clearRole = useCallback(async () => {
+    await AsyncStorage.removeItem("@dockflow_role");
+    setRoleState(null);
+  }, []);
+
+  const simulateArrival = useCallback(() => {
+    const now = new Date();
+    const activeCount = arrivals.filter(
+      (a) => a.status !== "completed" && a.status !== "departed" && a.status !== "en_route"
+    ).length;
+    setCurrentLoad((prev) => ({
+      ...prev,
+      status: "arrived",
+      arrivedTime: now,
+      eta: "0 min",
+      distance: "0 mi",
+      queuePosition: activeCount + 1,
+      statusHistory: [...prev.statusHistory, { status: "arrived", timestamp: now }],
+    }));
+    const newArrival: Arrival = {
+      id: "arr-driver",
+      driverName: "You (Driver)",
+      carrier: currentLoad.carrier,
+      truckNumber: "TX-9988",
+      trailerNumber: currentLoad.trailerNumber,
+      loadNumber: currentLoad.loadNumber,
+      referenceNumber: currentLoad.referenceNumber,
+      arrivalTime: now,
+      appointmentTime: currentLoad.appointmentTime,
+      status: "arrived",
+      waitingMinutes: 0,
+      notes: "",
+      checkedIn: false,
+    };
+    setArrivals((prev) => {
+      const filtered = prev.filter((a) => a.id !== "arr-driver");
+      return [newArrival, ...filtered];
+    });
+    setDriverNotifications((prev) => [
+      {
+        id: makeId(),
+        type: "arrival",
+        title: "You Have Arrived",
+        message: `Arrived at ${currentLoad.deliveryFacility}. Please proceed to check-in.`,
+        time: now,
+        read: false,
+      },
+      ...prev,
+    ]);
+  }, [arrivals, currentLoad]);
+
+  const submitCheckIn = useCallback((data: CheckInFormData) => {
+    const now = new Date();
+    setCurrentLoad((prev) => ({
+      ...prev,
+      status: "waiting",
+      checkInTime: now,
+      trailerNumber: data.trailerNumber || prev.trailerNumber,
+      loadNumber: data.loadNumber || prev.loadNumber,
+      referenceNumber: data.referenceNumber || prev.referenceNumber,
+      poNumber: data.poNumber || prev.poNumber,
+      statusHistory: [
+        ...prev.statusHistory,
+        { status: "checked_in", timestamp: now },
+        { status: "waiting", timestamp: new Date(now.getTime() + 1) },
+      ],
+    }));
+    setArrivals((prev) =>
+      prev.map((a) =>
+        a.id === "arr-driver"
+          ? { ...a, status: "waiting" as DriverStatus, checkedIn: true, trailerNumber: data.trailerNumber || a.trailerNumber, loadNumber: data.loadNumber || a.loadNumber }
+          : a
+      )
+    );
+  }, []);
+
+  const approveCheckIn = useCallback((arrivalId: string, dockId: string) => {
+    const arrival = arrivals.find((a) => a.id === arrivalId);
+    const dock = docks.find((d) => d.id === dockId);
+    if (!arrival || !dock) return;
+    const dockName = dock.name;
+    const dockNum = dock.name.replace("Dock ", "");
+    const now = new Date();
+    const instructions = `Proceed to ${dockName}. Use main entrance.`;
+
+    setArrivals((prev) =>
+      prev.map((a) =>
+        a.id === arrivalId ? { ...a, status: "dock_assigned" as DriverStatus, assignedDock: dockNum, instructions } : a
+      )
+    );
+    setDocks((prev) =>
+      prev.map((d) =>
+        d.id === dockId
+          ? { ...d, status: "reserved" as DockStatus, assignedDriverName: arrival.driverName, assignedLoadNumber: arrival.loadNumber, assignedCarrier: arrival.carrier }
+          : d
+      )
+    );
+    if (arrivalId === "arr-driver") {
+      setCurrentLoad((prev) => ({
+        ...prev,
+        status: "dock_assigned" as DriverStatus,
+        dockAssignment: dockNum,
+        instructions,
+        statusHistory: [...prev.statusHistory, { status: "dock_assigned", timestamp: now }],
+      }));
+      setDriverNotifications((prev) => [
+        { id: makeId(), type: "dock_assigned", title: "Dock Assigned", message: `${instructions} Stand by for loading.`, time: now, read: false },
+        ...prev,
+      ]);
+    }
+  }, [arrivals, docks]);
+
+  const rejectCheckIn = useCallback((arrivalId: string) => {
+    setArrivals((prev) =>
+      prev.map((a) => (a.id === arrivalId ? { ...a, status: "departed" as DriverStatus } : a))
+    );
+  }, []);
+
+  const sendInstructions = useCallback((arrivalId: string, instructions: string) => {
+    setArrivals((prev) =>
+      prev.map((a) => (a.id === arrivalId ? { ...a, instructions } : a))
+    );
+    if (arrivalId === "arr-driver") {
+      setCurrentLoad((prev) => ({ ...prev, instructions }));
+    }
+  }, []);
+
+  const markLoadingStarted = useCallback((arrivalId: string) => {
+    setArrivals((prev) =>
+      prev.map((a) => (a.id === arrivalId ? { ...a, status: "loading" as DriverStatus } : a))
+    );
+  }, []);
+
+  const markLoadingComplete = useCallback((arrivalId: string) => {
+    setArrivals((prev) =>
+      prev.map((a) => (a.id === arrivalId ? { ...a, status: "completed" as DriverStatus } : a))
+    );
+  }, []);
+
+  const markDeparture = useCallback((arrivalId: string) => {
+    setArrivals((prev) => {
+      const arrival = prev.find((a) => a.id === arrivalId);
+      if (arrival?.assignedDock) {
+        setDocks((dp) =>
+          dp.map((d) =>
+            d.name === `Dock ${arrival.assignedDock}`
+              ? { ...d, status: "available" as DockStatus, assignedDriverName: undefined, assignedLoadNumber: undefined, assignedCarrier: undefined }
+              : d
+          )
+        );
+      }
+      return prev.map((a) => (a.id === arrivalId ? { ...a, status: "departed" as DriverStatus } : a));
+    });
+  }, []);
+
+  const markNotificationsRead = useCallback(() => {
+    setDriverNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const unreadCount = driverNotifications.filter((n) => !n.read).length;
+
+  return (
+    <AppContext.Provider
+      value={{
+        role, roleLoaded, currentLoad, arrivals, docks, driverNotifications, unreadCount,
+        setRole, clearRole, simulateArrival, submitCheckIn, approveCheckIn, rejectCheckIn,
+        sendInstructions, markLoadingStarted, markLoadingComplete, markDeparture, markNotificationsRead,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useApp() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
+}

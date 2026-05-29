@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "bQ8ddUzhoqRTPN8xz4PLm"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "dockflow app icon"
