@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import type { SigFieldType } from "@/context/AppContext";
 
@@ -94,9 +94,9 @@ export function SignatureModal({ visible, onClose, onSave, fieldType = "signatur
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={["top"]}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: Platform.OS === "ios" ? Math.max(insets.top, 12) + 10 : insets.top + 8, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.secondary }]}>
             <Feather name="x" size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -261,7 +261,7 @@ export function SignatureModal({ visible, onClose, onSave, fieldType = "signatur
             </Text>
           </Pressable>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

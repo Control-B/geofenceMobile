@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SignatureModal } from "@/components/SignatureModal";
 import type { DocType, DocumentSignature, LoadDocument, SigFieldType } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
@@ -179,10 +179,6 @@ function DocumentDetailModal({ doc, visible, onClose, onSign }: {
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  // Always give a large-enough top pad for notch/dynamic island on iOS page sheets
-  const topPad = Platform.OS === "ios"
-    ? Math.max(insets.top, 12) + 10
-    : insets.top + 8;
 
   if (!doc) return null;
 
@@ -198,9 +194,9 @@ function DocumentDetailModal({ doc, visible, onClose, onSign }: {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[dStyles.root, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[dStyles.root, { backgroundColor: colors.background }]} edges={["top"]}>
         {/* Header */}
-        <View style={[dStyles.header, { paddingTop: topPad, borderBottomColor: colors.border }]}>
+        <View style={[dStyles.header, { borderBottomColor: colors.border }]}>
           <View style={[dStyles.docIcon, { backgroundColor: docColor + "20" }]}>
             <Feather name={DOC_ICONS[doc.type] as any} size={18} color={docColor} />
           </View>
@@ -323,7 +319,7 @@ function DocumentDetailModal({ doc, visible, onClose, onSign }: {
             </View>
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -371,12 +367,11 @@ function UploadSheet({ visible, onClose, onSelect }: {
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "ios" ? Math.max(insets.top, 12) + 10 : insets.top + 8;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[uStyles.root, { backgroundColor: colors.background }]}>
-        <View style={[uStyles.header, { paddingTop: topPad, borderBottomColor: colors.border }]}>
+      <SafeAreaView style={[uStyles.root, { backgroundColor: colors.background }]} edges={["top"]}>
+        <View style={[uStyles.header, { borderBottomColor: colors.border }]}>
           <Text style={[uStyles.title, { color: colors.foreground }]}>Add Document</Text>
           <Pressable onPress={onClose} hitSlop={12} style={[uStyles.closeBtn, { backgroundColor: colors.secondary }]}>
             <Feather name="x" size={18} color={colors.mutedForeground} />
@@ -399,7 +394,7 @@ function UploadSheet({ visible, onClose, onSelect }: {
             </Pressable>
           ))}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
