@@ -19,6 +19,10 @@ function NativeDriverTabs() {
         <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Check In</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="documents">
+        <Icon sf={{ default: "doc.badge.plus", selected: "doc.badge.plus" }} />
+        <Label>Docs</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="status">
         <Icon sf={{ default: "chart.line.uptrend.xyaxis", selected: "chart.line.uptrend.xyaxis.circle.fill" }} />
         <Label>Status</Label>
@@ -72,6 +76,14 @@ function ClassicDriverTabs() {
           title: "Check In",
           tabBarIcon: ({ color }) =>
             isIOS ? <SymbolView name="doc.text" tintColor={color} size={22} /> : <Feather name="clipboard" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="documents"
+        options={{
+          title: "Docs",
+          tabBarIcon: ({ color }) =>
+            isIOS ? <SymbolView name="doc.badge.plus" tintColor={color} size={22} /> : <Feather name="file-text" size={22} color={color} />,
         }}
       />
       <Tabs.Screen

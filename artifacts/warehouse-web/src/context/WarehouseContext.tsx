@@ -7,6 +7,33 @@ export type DriverStatus =
 
 export type DockStatus = "available" | "reserved" | "occupied" | "delayed" | "out_of_service";
 
+export type DocType = "BOL" | "POD" | "rate_confirmation" | "appointment_confirmation" | "lumper_receipt" | "custom";
+export type DocStatus = "uploaded" | "needs_driver_sig" | "needs_clerk_sig" | "fully_signed" | "rejected" | "completed";
+export type SignerRole = "Driver" | "Warehouse Clerk" | "Dispatcher" | "Receiver";
+
+export interface DocSignature {
+  id: string;
+  signer: string;
+  role: SignerRole;
+  timestamp: Date;
+  fieldType: "signature" | "initials" | "name";
+  signatureType: "drawn" | "typed";
+}
+
+export interface ArrivalDocument {
+  id: string;
+  arrivalId: string;
+  type: DocType;
+  name: string;
+  status: DocStatus;
+  uploadedAt: Date;
+  requiresDriverSig: boolean;
+  requiresClerkSig: boolean;
+  driverSigned: boolean;
+  clerkSigned: boolean;
+  signatures: DocSignature[];
+}
+
 export interface Arrival {
   id: string;
   driverName: string;
@@ -37,16 +64,20 @@ export interface Dock {
 interface WarehouseContextType {
   arrivals: Arrival[];
   docks: Dock[];
+  documents: ArrivalDocument[];
   pendingCount: number;
   approveCheckIn: (arrivalId: string, dockId: string) => void;
   rejectCheckIn: (arrivalId: string) => void;
   markLoadingStarted: (arrivalId: string) => void;
   markLoadingComplete: (arrivalId: string) => void;
   markDeparture: (arrivalId: string) => void;
+  clerkSignDocument: (docId: string) => void;
+  requestDocument: (arrivalId: string, docType: DocType) => void;
 }
 
 function minsAgo(m: number) { return new Date(Date.now() - m * 60000); }
 function todayAt(h: number, m = 0) { const d = new Date(); d.setHours(h, m, 0, 0); return d; }
+function makeId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
 const INIT_ARRIVALS: Arrival[] = [
   { id: "a1", driverName: "Sarah Chen", carrier: "FastFreight LLC", truckNumber: "IL-2934", trailerNumber: "T-4521", loadNumber: "LD-771204", referenceNumber: "REF-334512", arrivalTime: minsAgo(45), appointmentTime: todayAt(10, 0), status: "at_dock", assignedDock: "14", waitingMinutes: 45, notes: "Refrigerated — Dock 14 only", checkedIn: true, instructions: "Dock 14, north entrance" },
@@ -77,11 +108,21 @@ const INIT_DOCKS: Dock[] = Array.from({ length: 24 }, (_, i) => {
   return presets[id] ?? { id, name, status: "available" };
 });
 
+const INIT_DOCUMENTS: ArrivalDocument[] = [
+  { id: "doc-a1-1", arrivalId: "a1", type: "BOL", name: "Bill of Lading", status: "needs_clerk_sig", uploadedAt: minsAgo(40), requiresDriverSig: true, requiresClerkSig: true, driverSigned: true, clerkSigned: false, signatures: [{ id: "s1", signer: "Sarah Chen", role: "Driver", timestamp: minsAgo(35), fieldType: "signature", signatureType: "typed" }] },
+  { id: "doc-a1-2", arrivalId: "a1", type: "POD", name: "Proof of Delivery", status: "needs_driver_sig", uploadedAt: minsAgo(20), requiresDriverSig: true, requiresClerkSig: true, driverSigned: false, clerkSigned: false, signatures: [] },
+  { id: "doc-a2-1", arrivalId: "a2", type: "BOL", name: "Bill of Lading", status: "needs_driver_sig", uploadedAt: minsAgo(6), requiresDriverSig: true, requiresClerkSig: true, driverSigned: false, clerkSigned: false, signatures: [] },
+  { id: "doc-a3-1", arrivalId: "a3", type: "BOL", name: "Bill of Lading", status: "needs_clerk_sig", uploadedAt: minsAgo(50), requiresDriverSig: true, requiresClerkSig: true, driverSigned: true, clerkSigned: false, signatures: [{ id: "s3", signer: "David Kim", role: "Driver", timestamp: minsAgo(45), fieldType: "signature", signatureType: "drawn" }] },
+  { id: "doc-a3-2", arrivalId: "a3", type: "lumper_receipt", name: "Lumper Receipt", status: "uploaded", uploadedAt: minsAgo(30), requiresDriverSig: false, requiresClerkSig: false, driverSigned: false, clerkSigned: false, signatures: [] },
+  { id: "doc-a4-1", arrivalId: "a4", type: "BOL", name: "Bill of Lading", status: "uploaded", uploadedAt: minsAgo(12), requiresDriverSig: true, requiresClerkSig: true, driverSigned: false, clerkSigned: false, signatures: [] },
+];
+
 const Ctx = createContext<WarehouseContextType | undefined>(undefined);
 
 export function WarehouseProvider({ children }: { children: React.ReactNode }) {
   const [arrivals, setArrivals] = useState<Arrival[]>(INIT_ARRIVALS);
   const [docks, setDocks] = useState<Dock[]>(INIT_DOCKS);
+  const [documents, setDocuments] = useState<ArrivalDocument[]>(INIT_DOCUMENTS);
 
   const approveCheckIn = useCallback((arrivalId: string, dockId: string) => {
     const arrival = arrivals.find((a) => a.id === arrivalId);
@@ -90,6 +131,12 @@ export function WarehouseProvider({ children }: { children: React.ReactNode }) {
     const dockNum = dock.name.replace("Dock ", "");
     setArrivals((p) => p.map((a) => a.id === arrivalId ? { ...a, status: "dock_assigned" as DriverStatus, assignedDock: dockNum, checkedIn: true, instructions: `Proceed to ${dock.name}. Use main entrance.` } : a));
     setDocks((p) => p.map((d) => d.id === dockId ? { ...d, status: "reserved" as DockStatus, assignedDriverName: arrival.driverName, assignedLoadNumber: arrival.loadNumber, assignedCarrier: arrival.carrier } : d));
+    // Auto-add a BOL document for newly approved drivers
+    setDocuments((prev) => {
+      const existing = prev.find((d) => d.arrivalId === arrivalId);
+      if (existing) return prev;
+      return [...prev, { id: makeId(), arrivalId, type: "BOL", name: "Bill of Lading", status: "needs_driver_sig", uploadedAt: new Date(), requiresDriverSig: true, requiresClerkSig: true, driverSigned: false, clerkSigned: false, signatures: [] }];
+    });
   }, [arrivals, docks]);
 
   const rejectCheckIn = useCallback((arrivalId: string) => {
@@ -114,10 +161,24 @@ export function WarehouseProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const clerkSignDocument = useCallback((docId: string) => {
+    const now = new Date();
+    setDocuments((prev) => prev.map((d) => {
+      if (d.id !== docId) return d;
+      const newSig: DocSignature = { id: makeId(), signer: "Warehouse Clerk", role: "Warehouse Clerk", timestamp: now, fieldType: "signature", signatureType: "typed" };
+      return { ...d, clerkSigned: true, status: "fully_signed" as DocStatus, signatures: [...d.signatures, newSig] };
+    }));
+  }, []);
+
+  const requestDocument = useCallback((arrivalId: string, docType: DocType) => {
+    const labels: Record<DocType, string> = { BOL: "Bill of Lading", POD: "Proof of Delivery", rate_confirmation: "Rate Confirmation", appointment_confirmation: "Appointment Confirmation", lumper_receipt: "Lumper Receipt", custom: "Custom Document" };
+    setDocuments((prev) => [...prev, { id: makeId(), arrivalId, type: docType, name: labels[docType], status: "needs_driver_sig", uploadedAt: new Date(), requiresDriverSig: true, requiresClerkSig: docType === "BOL" || docType === "POD", driverSigned: false, clerkSigned: false, signatures: [] }]);
+  }, []);
+
   const pendingCount = arrivals.filter((a) => !a.checkedIn && (a.status === "arrived" || a.status === "en_route")).length;
 
   return (
-    <Ctx.Provider value={{ arrivals, docks, pendingCount, approveCheckIn, rejectCheckIn, markLoadingStarted, markLoadingComplete, markDeparture }}>
+    <Ctx.Provider value={{ arrivals, docks, documents, pendingCount, approveCheckIn, rejectCheckIn, markLoadingStarted, markLoadingComplete, markDeparture, clerkSignDocument, requestDocument }}>
       {children}
     </Ctx.Provider>
   );

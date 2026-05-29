@@ -1,0 +1,166 @@
+Continue improving my mobile-first geofence arrival/check-in app.
+
+Current app context:
+This is a driver + warehouse check-in system for freight, delivery, and warehouse appointments. The current UI already shows load details, pickup/delivery, appointment status, facility arrival, navigation, and bottom tabs. Keep the same dark premium mobile UI style, similar to Samsara/Motive/FourKites/Onfleet, but make it unique for driver + warehouse check-in.
+
+Main improvement:
+Add a simple DocuSign / HelloSign-style document signing workflow built specifically for truck drivers and warehouse clerks.
+
+Build these features:
+
+1. Documents tab / section
+- Add a “Documents” area connected to each load.
+- Allow driver or warehouse clerk to upload documents:
+  - BOL
+  - POD
+  - rate confirmation
+  - appointment confirmation
+  - lumper receipt
+  - custom document
+- Support PDF, image, and mobile photo upload.
+- Show document status:
+  - Uploaded
+  - Needs Driver Signature
+  - Needs Clerk Signature
+  - Fully Signed
+  - Rejected
+  - Completed
+
+2. Signature workflow
+- When driver arrives inside the geofence, unlock “Start Check-In”.
+- After check-in, show required documents that need signing.
+- Add signature options:
+  - Draw signature with finger/stylus on canvas
+  - Type signature and convert to clean signature-style text
+  - Upload saved signature image
+- Save signature with:
+  - signer name
+  - role: Driver / Warehouse Clerk / Dispatcher / Receiver
+  - timestamp
+  - GPS coordinates
+  - facility name
+  - load number
+  - IP/device metadata if available
+
+3. Drag-and-drop / tap-to-place signature
+- Add a simple document viewer.
+- Let the user place signature fields on the document.
+- Support:
+  - tap where signature should go
+  - drag signature box
+  - resize signature box
+  - add date field
+  - add initials field
+  - add printed name field
+  - add checkbox field
+- Add highlighted signing instructions:
+  - “Driver sign here”
+  - “Clerk sign here”
+  - “Initial here”
+  - “Date required”
+- Make the signing field visually obvious with colored outlines.
+
+4. Driver + warehouse dual signature
+- Driver must sign first or clerk can request driver signature.
+- Warehouse clerk must countersign before final completion.
+- Show a signing progress timeline:
+  - Arrived at facility
+  - Driver checked in
+  - Documents uploaded
+  - Driver signed
+  - Clerk signed
+  - Check-in completed
+  - Check-out completed
+
+5. Clerk mode
+- Add warehouse clerk view.
+- Clerk can:
+  - search load by load number, trailer number, PO number, appointment number, or driver phone
+  - verify driver arrival
+  - review uploaded documents
+  - request missing documents
+  - countersign document
+  - approve check-in
+  - assign dock door
+  - mark loading/unloading started
+  - mark completed
+  - release driver
+
+6. Document completion screen
+- After all signatures are completed, generate a signed document record.
+- Show:
+  - signed PDF preview
+  - audit trail
+  - download button
+  - share/send button
+  - completion status
+- The audit trail should look professional:
+  - signer
+  - role
+  - action
+  - timestamp
+  - GPS/location
+  - document version
+  - device/browser
+
+7. UX requirements
+- Keep the current mobile-first layout.
+- Add bottom tab update:
+  - Home
+  - Check In
+  - Documents
+  - Status
+  - Alerts
+- Use clear truck/logistics language.
+- Make buttons large and easy for drivers.
+- Use status cards, progress bars, badges, and timeline steps.
+- Keep it fast, clean, and professional.
+
+8. Backend/data model
+Create or update data models for:
+- Load
+- Facility
+- Driver
+- WarehouseClerk
+- Document
+- SignatureField
+- Signature
+- AuditTrail
+- CheckInSession
+- DockAssignment
+
+Each document should belong to a load and each signature should belong to a document and signer.
+
+9. Security and validation
+- Only assigned driver, authorized warehouse clerk, dispatcher, or facility admin can access the load documents.
+- Prevent editing a completed signed document.
+- Keep document versions.
+- Record every signature action in audit trail.
+- Add basic tamper protection by storing a document hash after final signing.
+
+10. Final expected user flow
+Driver:
+- Opens app
+- Arrives inside geofence
+- Taps Check In
+- Uploads or reviews BOL/POD
+- Signs required fields
+- Waits for clerk approval
+- Gets dock door
+- Clerk completes loading/unloading
+- Driver signs final POD if needed
+- Clerk countersigns
+- Driver checks out
+
+Warehouse clerk:
+- Opens clerk dashboard
+- Finds arriving driver/load
+- Verifies appointment
+- Reviews documents
+- Requests missing info if needed
+- Places or confirms signature fields
+- Signs as warehouse clerk
+- Assigns dock door
+- Completes release
+
+Make this production-style, but simple enough for MVP. Do not build a full legal enterprise e-sign platform. Build a logistics-focused signing system for truck check-in/check-out documents.
