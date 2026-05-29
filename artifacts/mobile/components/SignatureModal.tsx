@@ -96,7 +96,7 @@ export function SignatureModal({ visible, onClose, onSave, fieldType = "signatur
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: Platform.OS === "ios" ? 16 : insets.top + 8, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "ios" ? Math.max(insets.top, 12) + 10 : insets.top + 8, borderBottomColor: colors.border }]}>
           <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.secondary }]}>
             <Feather name="x" size={18} color={colors.mutedForeground} />
           </Pressable>
