@@ -107,7 +107,11 @@ export function SignatureModal({ visible, onClose, onSave, fieldType = "signatur
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={mode !== "draw"}
+        >
           {/* Mode Tabs */}
           <View style={[styles.modeTabs, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {(["draw", "type"] as const).map((m) => (
