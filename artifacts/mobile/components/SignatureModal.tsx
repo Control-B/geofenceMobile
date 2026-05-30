@@ -50,26 +50,32 @@ export function SignatureModal({
   const activeStroke = useRef<string>("");
 
   // ── PanResponder ───────────────────────────────────────────────────────────
-  // onStartShouldSetPanResponderCapture + onMoveShouldSetPanResponderCapture
-  // run in the capture phase (before any parent), giving the canvas the
-  // highest possible priority over scroll/swipe-dismiss gestures.
+  // IMPORTANT: always capture the path string into a local const BEFORE
+  // calling setStrokes. The functional updater runs lazily during React's
+  // batch flush — if we read activeStroke.current inside the updater,
+  // onPanResponderRelease may have already cleared it to "" by then,
+  // causing the last stroke to be replaced with an empty path (the
+  // "auto-delete" bug). Capturing the value eagerly avoids this entirely.
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: (e) => {
         const { locationX: x, locationY: y } = e.nativeEvent;
-        activeStroke.current = `M${x.toFixed(1)},${y.toFixed(1)}`;
-        setStrokes((s) => [...s, activeStroke.current]);
+        const path = `M${x.toFixed(1)},${y.toFixed(1)}`;
+        activeStroke.current = path;
+        setStrokes((s) => [...s, path]);
       },
       onPanResponderMove: (e) => {
         const { locationX: x, locationY: y } = e.nativeEvent;
-        activeStroke.current += ` L${x.toFixed(1)},${y.toFixed(1)}`;
-        setStrokes((s) => [...s.slice(0, -1), activeStroke.current]);
+        const path = activeStroke.current + ` L${x.toFixed(1)},${y.toFixed(1)}`;
+        activeStroke.current = path;
+        setStrokes((s) => [...s.slice(0, -1), path]);
       },
       onPanResponderRelease: () => {
+        activeStroke.current = "";
+      },
+      onPanResponderTerminate: () => {
         activeStroke.current = "";
       },
       onPanResponderTerminationRequest: () => false,

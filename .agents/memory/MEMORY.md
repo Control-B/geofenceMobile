@@ -1,0 +1,2 @@
+- [PanResponder stroke batching bug](panresponder-stroke-batching.md) — always capture SVG path to a local const before calling setStrokes; never read a ref inside a functional updater.
+- [iOS modal drawing](ios-modal-drawing.md) — pageSheet modals have native swipe-to-dismiss that overrides PanResponder; use fullScreen for any drawing/signing canvas.
