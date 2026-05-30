@@ -149,7 +149,7 @@ export function SignatureModal({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={["top"]}>
 
         {/* ── Header ── */}
