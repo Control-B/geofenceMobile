@@ -783,22 +783,23 @@ export default function DocumentsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { currentLoad, documents, signDocument, addDocument, driverName } = useApp();
+  const loadDocs = documents.filter((d) => d.loadId === currentLoad.id);
 
   const [activeView, setActiveView] = useState<ActiveView>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 118 : insets.bottom + 80;
 
-  const needsAction = documents.filter((d) => d.status === "needs_driver_sig").length;
+  const needsAction = loadDocs.filter((d) => d.status === "needs_driver_sig").length;
   const allDriverDone =
-    documents.filter((d) => d.requiresDriverSig).length > 0 &&
-    documents.filter((d) => d.requiresDriverSig).every((d) =>
+    loadDocs.filter((d) => d.requiresDriverSig).length > 0 &&
+    loadDocs.filter((d) => d.requiresDriverSig).every((d) =>
       d.signatures.some((s) => s.role === "Driver")
     );
 
   // ── detail doc resolved from state ──────────
   const detailDoc = activeView?.kind === "detail"
-    ? documents.find((d) => d.id === activeView.docId) ?? null
+    ? loadDocs.find((d) => d.id === activeView.docId) ?? null
     : null;
 
   // ── When user taps "Sign" in detail modal ──
@@ -828,7 +829,7 @@ export default function DocumentsScreen() {
         <View>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Documents</Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-            {documents.length} doc{documents.length !== 1 ? "s" : ""} · {currentLoad.loadNumber}
+            {loadDocs.length} doc{loadDocs.length !== 1 ? "s" : ""} · {currentLoad.loadNumber}
           </Text>
         </View>
         <Pressable
@@ -844,7 +845,7 @@ export default function DocumentsScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: botPad, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        <SigningTimeline docs={documents} loadStatus={currentLoad.status} />
+        <SigningTimeline docs={loadDocs} loadStatus={currentLoad.status} />
 
         {needsAction > 0 && (
           <View style={[styles.actionBanner, { backgroundColor: "rgba(245,158,11,0.12)", borderColor: "rgba(245,158,11,0.35)" }]}>
@@ -866,7 +867,7 @@ export default function DocumentsScreen() {
 
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Load Documents</Text>
 
-        {documents.length === 0 ? (
+        {loadDocs.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="file" size={36} color={colors.border} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Documents Yet</Text>
@@ -875,7 +876,7 @@ export default function DocumentsScreen() {
             </Text>
           </View>
         ) : (
-          documents.map((doc) => (
+          loadDocs.map((doc) => (
             <DocumentCard
               key={doc.id}
               doc={doc}

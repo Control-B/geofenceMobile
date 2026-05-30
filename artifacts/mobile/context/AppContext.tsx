@@ -140,9 +140,24 @@ export interface CheckInFormData {
   notes: string;
 }
 
+export interface CreateLoadData {
+  carrier: string;
+  pickupFacility: string;
+  pickupAddress: string;
+  deliveryFacility: string;
+  deliveryAddress: string;
+  loadNumber: string;
+  referenceNumber: string;
+  poNumber: string;
+  trailerNumber: string;
+  appointmentTime: Date;
+}
+
 interface AppContextType {
   role: "driver" | "warehouse" | null;
   roleLoaded: boolean;
+  loads: Load[];
+  activeLoadId: string;
   currentLoad: Load;
   arrivals: Arrival[];
   docks: Dock[];
@@ -152,6 +167,8 @@ interface AppContextType {
   driverName: string;
   setRole: (role: "driver" | "warehouse") => Promise<void>;
   clearRole: () => Promise<void>;
+  createLoad: (data: CreateLoadData) => void;
+  setActiveLoad: (id: string) => void;
   simulateArrival: () => void;
   submitCheckIn: (data: CheckInFormData) => void;
   approveCheckIn: (arrivalId: string, dockId: string) => void;
@@ -285,13 +302,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<"driver" | "warehouse" | null>(null);
   const [roleLoaded, setRoleLoaded] = useState(false);
-  const [currentLoad, setCurrentLoad] = useState<Load>(INITIAL_LOAD);
+  const [loads, setLoads] = useState<Load[]>([INITIAL_LOAD]);
+  const [activeLoadId, setActiveLoadId] = useState<string>(INITIAL_LOAD.id);
   const [arrivals, setArrivals] = useState<Arrival[]>(INITIAL_ARRIVALS);
   const [docks, setDocks] = useState<Dock[]>(INITIAL_DOCKS);
   const [driverNotifications, setDriverNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
   const [documents, setDocuments] = useState<LoadDocument[]>(INITIAL_DOCUMENTS);
 
   const driverName = "James Morrison";
+
+  // Derived: active load
+  const currentLoad: Load = loads.find((l) => l.id === activeLoadId) ?? loads[0];
+
+  // Helper: update only the currently-active load
+  const updateActiveLoad = useCallback((updater: (prev: Load) => Load) => {
+    setLoads((prev) => prev.map((l) => l.id === activeLoadId ? updater(l) : l));
+  }, [activeLoadId]);
 
   useEffect(() => {
     AsyncStorage.getItem("@dockflow_role").then((saved) => {
@@ -310,10 +336,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setRoleState(null);
   }, []);
 
+  const createLoad = useCallback((data: CreateLoadData) => {
+    const id = makeId();
+    const newLoad: Load = {
+      id,
+      carrier: data.carrier || "Independent",
+      pickupFacility: data.pickupFacility || "—",
+      pickupAddress: data.pickupAddress || "—",
+      deliveryFacility: data.deliveryFacility,
+      deliveryAddress: data.deliveryAddress,
+      appointmentTime: data.appointmentTime,
+      trailerNumber: data.trailerNumber || "—",
+      loadNumber: data.loadNumber,
+      referenceNumber: data.referenceNumber || `REF-${Date.now().toString().slice(-6)}`,
+      poNumber: data.poNumber || "—",
+      status: "en_route",
+      eta: "—",
+      distance: "—",
+      statusHistory: [{ status: "en_route", timestamp: new Date() }],
+    };
+    setLoads((prev) => [...prev, newLoad]);
+    setActiveLoadId(id);
+  }, []);
+
+  const setActiveLoad = useCallback((id: string) => {
+    setActiveLoadId(id);
+  }, []);
+
   const simulateArrival = useCallback(() => {
     const now = new Date();
     const activeCount = arrivals.filter((a) => a.status !== "completed" && a.status !== "departed" && a.status !== "en_route").length;
-    setCurrentLoad((prev) => ({
+    updateActiveLoad((prev) => ({
       ...prev,
       status: "arrived",
       arrivedTime: now,
@@ -346,7 +399,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const submitCheckIn = useCallback((data: CheckInFormData) => {
     const now = new Date();
-    setCurrentLoad((prev) => ({
+    updateActiveLoad((prev) => ({
       ...prev,
       status: "waiting",
       checkInTime: now,
@@ -376,7 +429,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setArrivals((prev) => prev.map((a) => a.id === arrivalId ? { ...a, status: "dock_assigned" as DriverStatus, assignedDock: dockNum, instructions } : a));
     setDocks((prev) => prev.map((d) => d.id === dockId ? { ...d, status: "reserved" as DockStatus, assignedDriverName: arrival.driverName, assignedLoadNumber: arrival.loadNumber, assignedCarrier: arrival.carrier } : d));
     if (arrivalId === "arr-driver") {
-      setCurrentLoad((prev) => ({ ...prev, status: "dock_assigned" as DriverStatus, dockAssignment: dockNum, instructions, statusHistory: [...prev.statusHistory, { status: "dock_assigned", timestamp: now }] }));
+      updateActiveLoad((prev) => ({ ...prev, status: "dock_assigned" as DriverStatus, dockAssignment: dockNum, instructions, statusHistory: [...prev.statusHistory, { status: "dock_assigned", timestamp: now }] }));
       setDriverNotifications((prev) => [
         { id: makeId(), type: "dock_assigned", title: "Dock Assigned", message: `${instructions} Stand by for loading.`, time: now, read: false },
         ...prev,
@@ -390,7 +443,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const sendInstructions = useCallback((arrivalId: string, instructions: string) => {
     setArrivals((prev) => prev.map((a) => a.id === arrivalId ? { ...a, instructions } : a));
-    if (arrivalId === "arr-driver") setCurrentLoad((prev) => ({ ...prev, instructions }));
+    if (arrivalId === "arr-driver") updateActiveLoad((prev) => ({ ...prev, instructions }));
   }, []);
 
   const markLoadingStarted = useCallback((arrivalId: string) => {
@@ -492,9 +545,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        role, roleLoaded, currentLoad, arrivals, docks, driverNotifications, unreadCount,
+        role, roleLoaded, loads, activeLoadId, currentLoad, arrivals, docks, driverNotifications, unreadCount,
         documents, driverName,
-        setRole, clearRole, simulateArrival, submitCheckIn, approveCheckIn, rejectCheckIn,
+        setRole, clearRole, createLoad, setActiveLoad, simulateArrival, submitCheckIn, approveCheckIn, rejectCheckIn,
         sendInstructions, markLoadingStarted, markLoadingComplete, markDeparture,
         markNotificationsRead, signDocument, addDocument,
       }}
