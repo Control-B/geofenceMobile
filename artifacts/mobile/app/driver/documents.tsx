@@ -1,7 +1,13 @@
 import { Feather } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
-import React, { useRef, useState } from "react";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -12,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SignatureModal } from "@/components/SignatureModal";
-import type { DocType, DocumentSignature, LoadDocument, SigFieldType } from "@/context/AppContext";
+import type { DocType, LoadDocument, SigFieldType } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -357,57 +363,332 @@ const dStyles = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────
-// Upload Sheet
+// Doc Capture Sheet  (type select → source → preview)
 // ─────────────────────────────────────────────
 
-function UploadSheet({ visible, onClose, onSelect }: {
+type CaptureStep = "type" | "options" | "preview";
+type CaptureMethod = "camera" | "library" | "file";
+
+function DocCaptureSheet({ visible, onClose, onConfirm }: {
   visible: boolean;
   onClose: () => void;
-  onSelect: (type: DocType) => void;
+  onConfirm: (type: DocType, uri?: string, fileName?: string, method?: CaptureMethod) => void;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
+  const [step, setStep] = useState<CaptureStep>("type");
+  const [selectedType, setSelectedType] = useState<DocType | null>(null);
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [capturedFileName, setCapturedFileName] = useState<string | null>(null);
+  const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setStep("type");
+      setSelectedType(null);
+      setCapturedUri(null);
+      setCapturedFileName(null);
+      setCaptureMethod(null);
+      setIsProcessing(false);
+    }
+  }, [visible]);
+
+  const handleTypeSelect = (type: DocType) => {
+    setSelectedType(type);
+    setStep("options");
+  };
+
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Camera Access Required", "Go to Settings → DockFlow → Camera to enable camera access.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images" as any,
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.92,
+    });
+    if (result.canceled) return;
+    setIsProcessing(true);
+    try {
+      const enhanced = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1600 } }],
+        { compress: 0.88, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      setCapturedUri(enhanced.uri);
+      setCaptureMethod("camera");
+      setStep("preview");
+    } catch {
+      setCapturedUri(result.assets[0].uri);
+      setCaptureMethod("camera");
+      setStep("preview");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleLibrary = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images" as any,
+      allowsEditing: false,
+      quality: 0.9,
+    });
+    if (result.canceled) return;
+    setCapturedUri(result.assets[0].uri);
+    setCaptureMethod("library");
+    setStep("preview");
+  };
+
+  const handleFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "image/*", "application/msword",
+               "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      setCapturedUri(asset.mimeType?.startsWith("image/") ? asset.uri : null);
+      setCapturedFileName(asset.name);
+      setCaptureMethod("file");
+      setStep("preview");
+    } catch {
+      Alert.alert("File Error", "Could not open the file picker. Try again.");
+    }
+  };
+
+  const handleConfirm = () => {
+    if (!selectedType) return;
+    onConfirm(
+      selectedType,
+      capturedUri ?? undefined,
+      capturedFileName ?? undefined,
+      captureMethod ?? undefined
+    );
+  };
+
+  const isImagePreview = !!capturedUri;
+  const docColor = selectedType ? DOC_COLORS[selectedType] : "#3B82F6";
+  const docLabel = selectedType ? UPLOAD_OPTIONS.find((o) => o.type === selectedType)?.label ?? selectedType : "";
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={[uStyles.root, { backgroundColor: colors.background }]} edges={["top"]}>
-        <View style={[uStyles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[uStyles.title, { color: colors.foreground }]}>Add Document</Text>
-          <Pressable onPress={onClose} hitSlop={12} style={[uStyles.closeBtn, { backgroundColor: colors.secondary }]}>
+      <SafeAreaView style={[csStyles.root, { backgroundColor: colors.background }]} edges={["top"]}>
+        {/* ── Header ── */}
+        <View style={[csStyles.header, { borderBottomColor: colors.border }]}>
+          {step !== "type" ? (
+            <Pressable onPress={() => setStep(step === "preview" ? "options" : "type")} hitSlop={12} style={[csStyles.backBtn, { backgroundColor: colors.secondary }]}>
+              <Feather name="arrow-left" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          ) : (
+            <View style={{ width: 36 }} />
+          )}
+          <Text style={[csStyles.title, { color: colors.foreground }]}>
+            {step === "type" ? "Add Document" : step === "options" ? "Upload Source" : "Review Document"}
+          </Text>
+          <Pressable onPress={onClose} hitSlop={12} style={[csStyles.closeBtn, { backgroundColor: colors.secondary }]}>
             <Feather name="x" size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 10 }}>
-          <Text style={[uStyles.sub, { color: colors.mutedForeground }]}>Select the document type to upload</Text>
-          {UPLOAD_OPTIONS.map(({ type, label }) => (
+
+        {/* ── Step: Type Selection ── */}
+        {step === "type" && (
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 10 }}>
+            <Text style={[csStyles.sub, { color: colors.mutedForeground }]}>Select the document type to upload</Text>
+            {UPLOAD_OPTIONS.map(({ type, label }) => (
+              <Pressable
+                key={type}
+                onPress={() => handleTypeSelect(type)}
+                hitSlop={4}
+                style={({ pressed }) => [csStyles.option, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <View style={[csStyles.optionIcon, { backgroundColor: DOC_COLORS[type] + "20" }]}>
+                  <Feather name={DOC_ICONS[type] as any} size={18} color={DOC_COLORS[type]} />
+                </View>
+                <Text style={[csStyles.optionLabel, { color: colors.foreground }]}>{label}</Text>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* ── Step: Upload Source Options ── */}
+        {step === "options" && (
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 14 }}>
+            {/* Doc type chip */}
+            <View style={[csStyles.docChip, { backgroundColor: docColor + "18", borderColor: docColor + "40" }]}>
+              <Feather name={selectedType ? DOC_ICONS[selectedType] as any : "file"} size={14} color={docColor} />
+              <Text style={[csStyles.docChipText, { color: docColor }]}>{docLabel}</Text>
+            </View>
+
+            <Text style={[csStyles.sub, { color: colors.mutedForeground }]}>How would you like to capture this document?</Text>
+
+            {/* Scan Document — primary CTA */}
             <Pressable
-              key={type}
-              onPress={() => { onSelect(type); onClose(); }}
-              hitSlop={4}
-              style={({ pressed }) => [uStyles.option, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              onPress={handleCamera}
+              style={({ pressed }) => [csStyles.sourceCard, csStyles.sourceCardPrimary, { opacity: pressed ? 0.85 : 1 }]}
             >
-              <View style={[uStyles.optionIcon, { backgroundColor: DOC_COLORS[type] + "20" }]}>
-                <Feather name={DOC_ICONS[type] as any} size={18} color={DOC_COLORS[type]} />
+              <View style={csStyles.sourcePrimaryIcon}>
+                <Feather name="camera" size={26} color="#fff" />
               </View>
-              <Text style={[uStyles.optionLabel, { color: colors.foreground }]}>{label}</Text>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              <View style={{ flex: 1 }}>
+                <Text style={csStyles.sourceCardTitlePrimary}>Scan with Camera</Text>
+                <Text style={csStyles.sourceCardSubPrimary}>Auto-enhance contrast · Remove dark edges · Best quality</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
             </Pressable>
-          ))}
-        </ScrollView>
+
+            {/* Divider */}
+            <View style={[csStyles.dividerRow, { borderTopColor: colors.border }]}>
+              <Text style={[csStyles.dividerText, { color: colors.mutedForeground }]}>or choose another source</Text>
+            </View>
+
+            {/* Library + File row */}
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <Pressable
+                onPress={handleLibrary}
+                style={({ pressed }) => [csStyles.sourceAlt, { backgroundColor: colors.card, borderColor: colors.border, flex: 1, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Feather name="image" size={22} color="#8B5CF6" />
+                <Text style={[csStyles.sourceAltTitle, { color: colors.foreground }]}>Photo Library</Text>
+                <Text style={[csStyles.sourceAltSub, { color: colors.mutedForeground }]}>Pick from gallery</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleFile}
+                style={({ pressed }) => [csStyles.sourceAlt, { backgroundColor: colors.card, borderColor: colors.border, flex: 1, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Feather name="paperclip" size={22} color="#F59E0B" />
+                <Text style={[csStyles.sourceAltTitle, { color: colors.foreground }]}>Files</Text>
+                <Text style={[csStyles.sourceAltSub, { color: colors.mutedForeground }]}>PDF or document</Text>
+              </Pressable>
+            </View>
+
+            {/* Tip box */}
+            <View style={[csStyles.tipBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="info" size={14} color={colors.mutedForeground} />
+              <Text style={[csStyles.tipText, { color: colors.mutedForeground }]}>
+                For best scan quality: lay the document flat on a dark surface, ensure even lighting, and keep the camera parallel to the page.
+              </Text>
+            </View>
+          </ScrollView>
+        )}
+
+        {/* ── Processing Overlay ── */}
+        {isProcessing && (
+          <View style={csStyles.processingOverlay}>
+            <View style={[csStyles.processingCard, { backgroundColor: colors.card }]}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={[csStyles.processingTitle, { color: colors.foreground }]}>Enhancing Document</Text>
+              <Text style={[csStyles.processingSub, { color: colors.mutedForeground }]}>Removing dark edges · optimizing contrast…</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Step: Preview & Confirm ── */}
+        {step === "preview" && !isProcessing && (
+          <View style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100, gap: 14 }}>
+              {/* Doc chip */}
+              <View style={[csStyles.docChip, { backgroundColor: docColor + "18", borderColor: docColor + "40" }]}>
+                <Feather name={selectedType ? DOC_ICONS[selectedType] as any : "file"} size={14} color={docColor} />
+                <Text style={[csStyles.docChipText, { color: docColor }]}>{docLabel}</Text>
+              </View>
+
+              {/* Image preview */}
+              {isImagePreview ? (
+                <View style={[csStyles.previewFrame, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <Image
+                    source={{ uri: capturedUri! }}
+                    style={csStyles.previewImage}
+                    resizeMode="contain"
+                  />
+                  {captureMethod === "camera" && (
+                    <View style={[csStyles.enhancedBadge, { backgroundColor: "#10B98118" }]}>
+                      <Feather name="zap" size={12} color="#10B981" />
+                      <Text style={[csStyles.enhancedBadgeText, { color: "#10B981" }]}>Enhanced</Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={[csStyles.filePreviewBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Feather name="file-text" size={44} color="#F59E0B" />
+                  <Text style={[csStyles.fileName, { color: colors.foreground }]} numberOfLines={2}>{capturedFileName}</Text>
+                  <Text style={[csStyles.fileSub, { color: colors.mutedForeground }]}>Ready to attach</Text>
+                </View>
+              )}
+
+              {/* Retake / Use different */}
+              <Pressable
+                onPress={() => { setCapturedUri(null); setCapturedFileName(null); setStep("options"); }}
+                style={({ pressed }) => [csStyles.retakeBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Feather name="rotate-ccw" size={15} color={colors.mutedForeground} />
+                <Text style={[csStyles.retakeBtnText, { color: colors.mutedForeground }]}>Use a different source</Text>
+              </Pressable>
+            </ScrollView>
+
+            {/* Confirm sticky footer */}
+            <View style={[csStyles.confirmFooter, { borderTopColor: colors.border, paddingBottom: insets.bottom + 16, backgroundColor: colors.background }]}>
+              <Pressable
+                onPress={handleConfirm}
+                style={({ pressed }) => [csStyles.confirmBtn, { backgroundColor: docColor, opacity: pressed ? 0.88 : 1 }]}
+              >
+                <Feather name="upload-cloud" size={18} color="#fff" />
+                <Text style={csStyles.confirmBtnText}>Attach to Load</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </Modal>
   );
 }
 
-const uStyles = StyleSheet.create({
+const csStyles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
-  title: { fontSize: 18, fontWeight: "700" as const },
+  title: { fontSize: 17, fontWeight: "700" as const, textAlign: "center" },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   closeBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  sub: { fontSize: 13, marginBottom: 4 },
+  sub: { fontSize: 13, marginBottom: 2 },
   option: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: 14, borderWidth: 1, minHeight: 60 },
   optionIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   optionLabel: { flex: 1, fontSize: 15, fontWeight: "500" as const },
+  docChip: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 100, borderWidth: 1, alignSelf: "flex-start" },
+  docChipText: { fontSize: 13, fontWeight: "600" as const },
+  sourceCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18, borderRadius: 16 },
+  sourceCardPrimary: { backgroundColor: "#3B82F6" },
+  sourcePrimaryIcon: { width: 50, height: 50, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  sourceCardTitlePrimary: { fontSize: 16, fontWeight: "700" as const, color: "#fff" },
+  sourceCardSubPrimary: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 3, lineHeight: 17 },
+  dividerRow: { borderTopWidth: 1, paddingTop: 14, alignItems: "center" },
+  dividerText: { fontSize: 12, fontWeight: "500" as const },
+  sourceAlt: { alignItems: "center", gap: 6, padding: 18, borderRadius: 16, borderWidth: 1 },
+  sourceAltTitle: { fontSize: 14, fontWeight: "600" as const },
+  sourceAltSub: { fontSize: 11 },
+  tipBox: { flexDirection: "row", gap: 10, padding: 12, borderRadius: 12, borderWidth: 1, alignItems: "flex-start" },
+  tipText: { fontSize: 12, flex: 1, lineHeight: 17 },
+  processingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", zIndex: 99 },
+  processingCard: { padding: 32, borderRadius: 20, alignItems: "center", gap: 14, width: 260 },
+  processingTitle: { fontSize: 16, fontWeight: "700" as const },
+  processingSub: { fontSize: 13, textAlign: "center", lineHeight: 18 },
+  previewFrame: { borderRadius: 14, borderWidth: 1, overflow: "hidden", aspectRatio: 3 / 4 },
+  previewImage: { width: "100%", height: "100%" },
+  enhancedBadge: { position: "absolute", bottom: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 100 },
+  enhancedBadgeText: { fontSize: 11, fontWeight: "600" as const },
+  filePreviewBox: { borderRadius: 14, borderWidth: 1, padding: 40, alignItems: "center", gap: 12 },
+  fileName: { fontSize: 15, fontWeight: "600" as const, textAlign: "center" },
+  fileSub: { fontSize: 13 },
+  retakeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 14, borderRadius: 12, borderWidth: 1 },
+  retakeBtnText: { fontSize: 14 },
+  confirmFooter: { padding: 16, borderTopWidth: 1 },
+  confirmBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, borderRadius: 14 },
+  confirmBtnText: { fontSize: 16, fontWeight: "700" as const, color: "#fff" },
 });
 
 // ─────────────────────────────────────────────
@@ -420,6 +701,10 @@ function DocumentCard({ doc, onPress }: { doc: LoadDocument; onPress: () => void
   const statusColor = STATUS_COLORS[doc.status];
   const needsAction = doc.status === "needs_driver_sig";
 
+  const captureIcon: Record<string, string> = {
+    camera: "camera", library: "image", file: "paperclip",
+  };
+
   return (
     <Pressable
       onPress={onPress}
@@ -430,14 +715,26 @@ function DocumentCard({ doc, onPress }: { doc: LoadDocument; onPress: () => void
       ]}
     >
       {needsAction && <View style={cardStyles.actionStripe} />}
-      <View style={[cardStyles.icon, { backgroundColor: docColor + "20" }]}>
-        <Feather name={DOC_ICONS[doc.type] as any} size={20} color={docColor} />
-      </View>
+
+      {/* Thumbnail if image exists, else icon */}
+      {doc.imageUri ? (
+        <Image source={{ uri: doc.imageUri }} style={[cardStyles.thumbnail, { borderColor: colors.border }]} resizeMode="cover" />
+      ) : (
+        <View style={[cardStyles.icon, { backgroundColor: docColor + "20" }]}>
+          <Feather name={DOC_ICONS[doc.type] as any} size={20} color={docColor} />
+        </View>
+      )}
+
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[cardStyles.name, { color: colors.foreground }]} numberOfLines={1}>{doc.name}</Text>
-        <Text style={[cardStyles.sub, { color: colors.mutedForeground }]} numberOfLines={1}>
-          {DOC_LABELS[doc.type]} · {doc.uploadedBy} · {fmtDate(doc.uploadedAt)}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
+          {doc.captureMethod && (
+            <Feather name={captureIcon[doc.captureMethod] as any} size={10} color={colors.mutedForeground} />
+          )}
+          <Text style={[cardStyles.sub, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {DOC_LABELS[doc.type]} · {doc.uploadedBy} · {fmtDate(doc.uploadedAt)}
+          </Text>
+        </View>
         {doc.signatures.length > 0 && (
           <Text style={[cardStyles.sigCount, { color: "#10B981" }]}>
             {doc.signatures.length} signature{doc.signatures.length !== 1 ? "s" : ""} collected
@@ -458,8 +755,9 @@ const cardStyles = StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1.5, padding: 14, overflow: "hidden", position: "relative", minHeight: 72 },
   actionStripe: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4, backgroundColor: "#F59E0B", borderTopLeftRadius: 12, borderBottomLeftRadius: 12 },
   icon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  thumbnail: { width: 44, height: 58, borderRadius: 8, borderWidth: 1, flexShrink: 0, backgroundColor: "#1E2640" },
   name: { fontSize: 14, fontWeight: "700" as const },
-  sub: { fontSize: 12, marginTop: 2 },
+  sub: { fontSize: 12 },
   sigCount: { fontSize: 11, marginTop: 3, fontWeight: "500" as const },
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100 },
   statusText: { fontSize: 11, fontWeight: "600" as const },
@@ -617,13 +915,14 @@ export default function DocumentsScreen() {
         facilityName={currentLoad.deliveryFacility}
       />
 
-      {/* Upload sheet */}
-      <UploadSheet
+      {/* Document capture sheet */}
+      <DocCaptureSheet
         visible={activeView?.kind === "upload"}
         onClose={() => setActiveView(null)}
-        onSelect={(type) => {
+        onConfirm={(type, uri, fileName, method) => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          addDocument(type);
+          addDocument(type, { imageUri: uri, fileName, captureMethod: method });
+          setActiveView(null);
         }}
       />
     </View>

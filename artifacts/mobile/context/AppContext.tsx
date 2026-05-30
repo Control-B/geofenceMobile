@@ -63,6 +63,9 @@ export interface LoadDocument {
   requiresDriverSig: boolean;
   requiresClerkSig: boolean;
   notes?: string;
+  imageUri?: string;
+  fileName?: string;
+  captureMethod?: "camera" | "library" | "file";
 }
 
 export interface StatusEvent {
@@ -159,7 +162,7 @@ interface AppContextType {
   markDeparture: (arrivalId: string) => void;
   markNotificationsRead: () => void;
   signDocument: (docId: string, data: { signatureData: string; signatureType: "drawn" | "typed"; fieldType: SigFieldType }) => void;
-  addDocument: (type: DocType, name?: string) => void;
+  addDocument: (type: DocType, opts?: { imageUri?: string; fileName?: string; captureMethod?: "camera" | "library" | "file"; name?: string }) => void;
 }
 
 function makeId(): string {
@@ -450,7 +453,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, [driverName, currentLoad]);
 
-  const addDocument = useCallback((type: DocType, name?: string) => {
+  const addDocument = useCallback((type: DocType, opts?: { imageUri?: string; fileName?: string; captureMethod?: "camera" | "library" | "file"; name?: string }) => {
     const labels: Record<DocType, string> = {
       BOL: "Bill of Lading",
       POD: "Proof of Delivery",
@@ -461,20 +464,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const needsSig = type === "BOL" || type === "POD" || type === "lumper_receipt";
     const now = new Date();
+    const method = opts?.captureMethod;
+    const captureLabel = method === "camera" ? "scanned via camera" : method === "library" ? "picked from library" : method === "file" ? "attached from files" : "uploaded";
     const newDoc: LoadDocument = {
       id: makeId(),
       loadId: currentLoad.id,
       type,
-      name: name || labels[type],
+      name: opts?.name || labels[type],
       status: needsSig ? "needs_driver_sig" : "uploaded",
       uploadedAt: now,
       uploadedBy: driverName,
       signatures: [],
       auditTrail: [
-        { id: makeId(), action: "Document uploaded by Driver", signer: driverName, role: "Driver", timestamp: now, documentId: "", loadNumber: currentLoad.loadNumber, facility: currentLoad.deliveryFacility },
+        { id: makeId(), action: `Document ${captureLabel} by Driver`, signer: driverName, role: "Driver", timestamp: now, documentId: "", loadNumber: currentLoad.loadNumber, facility: currentLoad.deliveryFacility },
       ],
       requiresDriverSig: needsSig,
       requiresClerkSig: type === "BOL" || type === "POD",
+      imageUri: opts?.imageUri,
+      fileName: opts?.fileName,
+      captureMethod: opts?.captureMethod,
     };
     setDocuments((prev) => [...prev, newDoc]);
   }, [currentLoad, driverName]);
