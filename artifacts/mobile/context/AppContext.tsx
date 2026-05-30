@@ -81,7 +81,9 @@ export interface Load {
   deliveryFacility: string;
   deliveryAddress: string;
   appointmentTime: Date;
+  truckNumber: string;
   trailerNumber: string;
+  driverPhone: string;
   loadNumber: string;
   referenceNumber: string;
   poNumber: string;
@@ -102,6 +104,7 @@ export interface Arrival {
   carrier: string;
   truckNumber: string;
   trailerNumber: string;
+  driverPhone: string;
   loadNumber: string;
   referenceNumber: string;
   arrivalTime: Date;
@@ -133,7 +136,9 @@ export interface AppNotification {
 }
 
 export interface CheckInFormData {
+  truckNumber: string;
   trailerNumber: string;
+  driverPhone: string;
   loadNumber: string;
   referenceNumber: string;
   poNumber: string;
@@ -149,7 +154,9 @@ export interface CreateLoadData {
   loadNumber: string;
   referenceNumber: string;
   poNumber: string;
+  truckNumber: string;
   trailerNumber: string;
+  driverPhone: string;
   appointmentTime: Date;
 }
 
@@ -204,7 +211,9 @@ const INITIAL_LOAD: Load = {
   deliveryFacility: "Midwest Fulfillment Hub",
   deliveryAddress: "8800 Regal Row, Dallas, TX 75247",
   appointmentTime: todayAt(10, 30),
+  truckNumber: "IL-2934",
   trailerNumber: "T-9234",
+  driverPhone: "(312) 555-0147",
   loadNumber: "LD-882341",
   referenceNumber: "REF-445521",
   poNumber: "PO-887234",
@@ -215,14 +224,14 @@ const INITIAL_LOAD: Load = {
 };
 
 const INITIAL_ARRIVALS: Arrival[] = [
-  { id: "arr-001", driverName: "Sarah Chen", carrier: "FastFreight LLC", truckNumber: "IL-2934", trailerNumber: "T-4521", loadNumber: "LD-771204", referenceNumber: "REF-334512", arrivalTime: minutesAgo(45), appointmentTime: todayAt(10, 0), status: "at_dock", assignedDock: "14", waitingMinutes: 45, notes: "Refrigerated — Dock 14 only", checkedIn: true, instructions: "Proceed to Dock 14. Refrigerated bay, use north entrance." },
-  { id: "arr-002", driverName: "Mike Thompson", carrier: "Cornerstone Logistics", truckNumber: "OH-8821", trailerNumber: "T-6634", loadNumber: "LD-903881", referenceNumber: "REF-556782", arrivalTime: minutesAgo(8), appointmentTime: todayAt(10, 30), status: "checked_in", waitingMinutes: 8, notes: "", checkedIn: true },
-  { id: "arr-003", driverName: "David Kim", carrier: "Apex Carriers", truckNumber: "TX-1109", trailerNumber: "T-2211", loadNumber: "LD-556732", referenceNumber: "REF-778901", arrivalTime: minutesAgo(52), appointmentTime: todayAt(9, 30), status: "loading", assignedDock: "08", waitingMinutes: 52, notes: "Heavy machinery — forklift required", checkedIn: true },
-  { id: "arr-004", driverName: "Lisa Rodriguez", carrier: "Mountain West Freight", truckNumber: "CO-7743", trailerNumber: "T-8890", loadNumber: "LD-443215", referenceNumber: "REF-112234", arrivalTime: minutesAgo(15), appointmentTime: todayAt(10, 30), status: "dock_assigned", assignedDock: "22", waitingMinutes: 15, notes: "", checkedIn: true, instructions: "Proceed to Dock 22. Use west entrance." },
-  { id: "arr-005", driverName: "Amanda Foster", carrier: "ClearPath Logistics", truckNumber: "GA-5567", trailerNumber: "T-3378", loadNumber: "LD-991023", referenceNumber: "REF-990123", arrivalTime: minutesAgo(5), appointmentTime: todayAt(11, 30), status: "arrived", waitingMinutes: 5, notes: "", checkedIn: false },
-  { id: "arr-006", driverName: "Robert Wilson", carrier: "Lakefront Transport", truckNumber: "MI-3301", trailerNumber: "T-1145", loadNumber: "LD-667891", referenceNumber: "REF-445678", arrivalTime: minutesAgo(72), appointmentTime: todayAt(9, 0), status: "completed", assignedDock: "06", waitingMinutes: 72, notes: "", checkedIn: true },
-  { id: "arr-007", driverName: "Jennifer Walsh", carrier: "Sunrise Carriers", truckNumber: "FL-4423", trailerNumber: "T-5512", loadNumber: "LD-334892", referenceNumber: "REF-889012", arrivalTime: minutesAgo(3), appointmentTime: todayAt(11, 15), status: "arrived", waitingMinutes: 3, notes: "Two pallets, oversized", checkedIn: false },
-  { id: "arr-008", driverName: "Carlos Nguyen", carrier: "Pacific Bridge Trucking", truckNumber: "CA-8834", trailerNumber: "T-7721", loadNumber: "LD-224567", referenceNumber: "REF-334455", arrivalTime: minutesAgo(0), appointmentTime: todayAt(11, 0), status: "en_route", waitingMinutes: 0, notes: "", checkedIn: false },
+  { id: "arr-001", driverName: "Sarah Chen", carrier: "FastFreight LLC", truckNumber: "IL-2934", trailerNumber: "T-4521", driverPhone: "(312) 555-0192", loadNumber: "LD-771204", referenceNumber: "REF-334512", arrivalTime: minutesAgo(45), appointmentTime: todayAt(10, 0), status: "at_dock", assignedDock: "14", waitingMinutes: 45, notes: "Refrigerated — Dock 14 only", checkedIn: true, instructions: "Proceed to Dock 14. Refrigerated bay, use north entrance." },
+  { id: "arr-002", driverName: "Mike Thompson", carrier: "Cornerstone Logistics", truckNumber: "OH-8821", trailerNumber: "T-6634", driverPhone: "(614) 555-0378", loadNumber: "LD-903881", referenceNumber: "REF-556782", arrivalTime: minutesAgo(8), appointmentTime: todayAt(10, 30), status: "checked_in", waitingMinutes: 8, notes: "", checkedIn: true },
+  { id: "arr-003", driverName: "David Kim", carrier: "Apex Carriers", truckNumber: "TX-1109", trailerNumber: "T-2211", driverPhone: "(214) 555-0561", loadNumber: "LD-556732", referenceNumber: "REF-778901", arrivalTime: minutesAgo(52), appointmentTime: todayAt(9, 30), status: "loading", assignedDock: "08", waitingMinutes: 52, notes: "Heavy machinery — forklift required", checkedIn: true },
+  { id: "arr-004", driverName: "Lisa Rodriguez", carrier: "Mountain West Freight", truckNumber: "CO-7743", trailerNumber: "T-8890", driverPhone: "(303) 555-0844", loadNumber: "LD-443215", referenceNumber: "REF-112234", arrivalTime: minutesAgo(15), appointmentTime: todayAt(10, 30), status: "dock_assigned", assignedDock: "22", waitingMinutes: 15, notes: "", checkedIn: true, instructions: "Proceed to Dock 22. Use west entrance." },
+  { id: "arr-005", driverName: "Amanda Foster", carrier: "ClearPath Logistics", truckNumber: "GA-5567", trailerNumber: "T-3378", driverPhone: "(404) 555-0227", loadNumber: "LD-991023", referenceNumber: "REF-990123", arrivalTime: minutesAgo(5), appointmentTime: todayAt(11, 30), status: "arrived", waitingMinutes: 5, notes: "", checkedIn: false },
+  { id: "arr-006", driverName: "Robert Wilson", carrier: "Lakefront Transport", truckNumber: "MI-3301", trailerNumber: "T-1145", driverPhone: "(313) 555-0619", loadNumber: "LD-667891", referenceNumber: "REF-445678", arrivalTime: minutesAgo(72), appointmentTime: todayAt(9, 0), status: "completed", assignedDock: "06", waitingMinutes: 72, notes: "", checkedIn: true },
+  { id: "arr-007", driverName: "Jennifer Walsh", carrier: "Sunrise Carriers", truckNumber: "FL-4423", trailerNumber: "T-5512", driverPhone: "(407) 555-0933", loadNumber: "LD-334892", referenceNumber: "REF-889012", arrivalTime: minutesAgo(3), appointmentTime: todayAt(11, 15), status: "arrived", waitingMinutes: 3, notes: "Two pallets, oversized", checkedIn: false },
+  { id: "arr-008", driverName: "Carlos Nguyen", carrier: "Pacific Bridge Trucking", truckNumber: "CA-8834", trailerNumber: "T-7721", driverPhone: "(415) 555-0415", loadNumber: "LD-224567", referenceNumber: "REF-334455", arrivalTime: minutesAgo(0), appointmentTime: todayAt(11, 0), status: "en_route", waitingMinutes: 0, notes: "", checkedIn: false },
 ];
 
 const INITIAL_DOCKS: Dock[] = Array.from({ length: 24 }, (_, i) => {
@@ -346,7 +355,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deliveryFacility: data.deliveryFacility,
       deliveryAddress: data.deliveryAddress,
       appointmentTime: data.appointmentTime,
+      truckNumber: data.truckNumber || "—",
       trailerNumber: data.trailerNumber || "—",
+      driverPhone: data.driverPhone || "—",
       loadNumber: data.loadNumber,
       referenceNumber: data.referenceNumber || `REF-${Date.now().toString().slice(-6)}`,
       poNumber: data.poNumber || "—",
@@ -403,14 +414,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       status: "waiting",
       checkInTime: now,
+      truckNumber: data.truckNumber || prev.truckNumber,
       trailerNumber: data.trailerNumber || prev.trailerNumber,
+      driverPhone: data.driverPhone || prev.driverPhone,
       loadNumber: data.loadNumber || prev.loadNumber,
       referenceNumber: data.referenceNumber || prev.referenceNumber,
       poNumber: data.poNumber || prev.poNumber,
       statusHistory: [...prev.statusHistory, { status: "checked_in", timestamp: now }, { status: "waiting", timestamp: new Date(now.getTime() + 1) }],
     }));
     setArrivals((prev) =>
-      prev.map((a) => a.id === "arr-driver" ? { ...a, status: "waiting" as DriverStatus, checkedIn: true, trailerNumber: data.trailerNumber || a.trailerNumber, loadNumber: data.loadNumber || a.loadNumber } : a)
+      prev.map((a) => a.id === "arr-driver" ? { ...a, status: "waiting" as DriverStatus, checkedIn: true, truckNumber: data.truckNumber || a.truckNumber, trailerNumber: data.trailerNumber || a.trailerNumber, driverPhone: data.driverPhone || a.driverPhone, loadNumber: data.loadNumber || a.loadNumber } : a)
     );
     setDriverNotifications((prev) => [
       { id: makeId(), type: "document", title: "Documents Ready", message: "Please review and sign your BOL and other required documents in the Documents tab.", time: new Date(now.getTime() + 2000), read: false },

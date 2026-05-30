@@ -107,7 +107,8 @@ export default function ConsoleScreen() {
       </View>
 
       <Text style={[styles.driverName, { color: colors.foreground }]}>{item.driverName}</Text>
-      <Text style={[styles.carrierText, { color: colors.mutedForeground }]}>{item.carrier} · {item.trailerNumber} · {item.loadNumber}</Text>
+      <Text style={[styles.carrierText, { color: colors.mutedForeground }]}>{item.carrier} · Truck {item.truckNumber} · Trailer {item.trailerNumber} · {item.loadNumber}</Text>
+      {item.driverPhone ? <Text style={[styles.carrierText, { color: colors.mutedForeground }]}>📞 {item.driverPhone}</Text> : null}
       {item.notes ? <Text style={[styles.notesText, { color: colors.mutedForeground }]}>{item.notes}</Text> : null}
 
       <View style={styles.actionRow}>
@@ -138,7 +139,8 @@ export default function ConsoleScreen() {
           <Text style={[styles.timeText, { color: colors.mutedForeground }]}>{timeAgo(item.arrivalTime)}</Text>
         </View>
         <Text style={[styles.driverName, { color: colors.foreground }]}>{item.driverName}</Text>
-        <Text style={[styles.carrierText, { color: colors.mutedForeground }]}>{item.carrier} · {item.trailerNumber}</Text>
+        <Text style={[styles.carrierText, { color: colors.mutedForeground }]}>{item.carrier} · Truck {item.truckNumber} · Trailer {item.trailerNumber}</Text>
+        {item.driverPhone ? <Text style={[styles.carrierText, { color: colors.mutedForeground }]}>📞 {item.driverPhone}</Text> : null}
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>

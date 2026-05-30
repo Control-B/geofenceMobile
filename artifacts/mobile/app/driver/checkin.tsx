@@ -20,7 +20,9 @@ export default function CheckInScreen() {
   const insets = useSafeAreaInsets();
   const { currentLoad, submitCheckIn } = useApp();
 
+  const [truck, setTruck] = useState(currentLoad.truckNumber);
   const [trailer, setTrailer] = useState(currentLoad.trailerNumber);
+  const [phone, setPhone] = useState(currentLoad.driverPhone);
   const [load, setLoad] = useState(currentLoad.loadNumber);
   const [reference, setReference] = useState(currentLoad.referenceNumber);
   const [po, setPo] = useState(currentLoad.poNumber);
@@ -47,7 +49,7 @@ export default function CheckInScreen() {
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    submitCheckIn({ trailerNumber: trailer.trim(), loadNumber: load.trim(), referenceNumber: reference.trim(), poNumber: po.trim(), notes: notes.trim() });
+    submitCheckIn({ truckNumber: truck.trim(), trailerNumber: trailer.trim(), driverPhone: phone.trim(), loadNumber: load.trim(), referenceNumber: reference.trim(), poNumber: po.trim(), notes: notes.trim() });
     setSubmitted(true);
   };
 
@@ -75,7 +77,9 @@ export default function CheckInScreen() {
             <View style={[styles.confirmDetails, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {[
                 { label: "Load #", val: currentLoad.loadNumber },
+                { label: "Truck #", val: currentLoad.truckNumber },
                 { label: "Trailer", val: currentLoad.trailerNumber },
+                { label: "Phone", val: currentLoad.driverPhone },
                 { label: "Reference", val: currentLoad.referenceNumber },
               ].map((item) => (
                 <View key={item.label} style={styles.confirmRow}>
@@ -111,7 +115,9 @@ export default function CheckInScreen() {
         </View>
 
         {([
+          { label: "Truck Number", val: truck, set: setTruck, required: false, placeholder: "e.g. IL-2934" },
           { label: "Trailer Number", val: trailer, set: setTrailer, required: true, placeholder: "e.g. T-9234" },
+          { label: "Driver Phone", val: phone, set: setPhone, required: false, placeholder: "e.g. (312) 555-0147" },
           { label: "Load Number", val: load, set: setLoad, required: true, placeholder: "e.g. LD-882341" },
           { label: "Reference Number", val: reference, set: setReference, required: false, placeholder: "e.g. REF-445521" },
           { label: "Purchase Order", val: po, set: setPo, required: false, placeholder: "e.g. PO-887234" },

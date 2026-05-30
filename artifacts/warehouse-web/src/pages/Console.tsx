@@ -221,7 +221,9 @@ function PendingCard({ arrival, docs, onApprove, onReject, onClerkSign, onReques
       <div className="text-xs text-[#6B7A9E] mt-0.5">{arrival.carrier}</div>
       <div className="flex gap-4 mt-2 text-xs text-[#A8B3CF] flex-wrap">
         <span>Load: <span className="font-semibold text-[#E2E8F0]">{arrival.loadNumber}</span></span>
+        <span>Truck: <span className="font-semibold text-[#E2E8F0]">{arrival.truckNumber}</span></span>
         <span>Trailer: <span className="font-semibold text-[#E2E8F0]">{arrival.trailerNumber}</span></span>
+        <span>📞 <span className="font-semibold text-[#E2E8F0]">{arrival.driverPhone}</span></span>
         <span className={isLate ? "text-red-400 font-semibold" : ""}>{fmtTime(arrival.appointmentTime)}{isLate ? " LATE" : ""}</span>
       </div>
       {arrival.notes && <div className="mt-2 text-xs text-[#6B7A9E] italic">{arrival.notes}</div>}

@@ -33,7 +33,7 @@ function YardSection({ title, icon, count, color, arrivals, cardBg, cardBorder, 
           <View style={[styles.yardDot, { backgroundColor: color }]} />
           <View style={styles.yardInfo}>
             <Text style={[styles.yardDriver, { color: fg }]}>{a.driverName}</Text>
-            <Text style={[styles.yardSub, { color: muted }]}>{a.carrier} · {a.trailerNumber} · {a.loadNumber}</Text>
+            <Text style={[styles.yardSub, { color: muted }]}>{a.carrier} · Truck {a.truckNumber} · Trailer {a.trailerNumber} · {a.loadNumber}</Text>
           </View>
           <Text style={[styles.yardTime, { color: muted }]}>{timeAgo(a.arrivalTime)}</Text>
         </View>

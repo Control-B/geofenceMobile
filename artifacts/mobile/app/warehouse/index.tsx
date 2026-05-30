@@ -64,7 +64,9 @@ export default function QueueScreen() {
         a.driverName.toLowerCase().includes(q) ||
         a.carrier.toLowerCase().includes(q) ||
         a.loadNumber.toLowerCase().includes(q) ||
-        a.trailerNumber.toLowerCase().includes(q)
+        a.trailerNumber.toLowerCase().includes(q) ||
+        a.truckNumber.toLowerCase().includes(q) ||
+        (a.driverPhone ?? "").toLowerCase().includes(q)
       );
     });
   }, [arrivals, search, filter]);
@@ -91,8 +93,16 @@ export default function QueueScreen() {
             <Text style={[styles.metaVal, { color: colors.foreground }]}>{item.loadNumber}</Text>
           </View>
           <View style={styles.metaItem}>
+            <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Truck #</Text>
+            <Text style={[styles.metaVal, { color: colors.foreground }]}>{item.truckNumber}</Text>
+          </View>
+          <View style={styles.metaItem}>
             <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Trailer</Text>
             <Text style={[styles.metaVal, { color: colors.foreground }]}>{item.trailerNumber}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Phone</Text>
+            <Text style={[styles.metaVal, { color: colors.foreground }]}>{item.driverPhone}</Text>
           </View>
           <View style={styles.metaItem}>
             <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Arrived</Text>

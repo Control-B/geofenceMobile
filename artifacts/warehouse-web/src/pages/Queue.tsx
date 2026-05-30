@@ -48,7 +48,7 @@ export default function Queue() {
     return arrivals.filter((a) => {
       if (!filterMatch(a, filter)) return false;
       if (!q) return true;
-      return a.driverName.toLowerCase().includes(q) || a.carrier.toLowerCase().includes(q) || a.loadNumber.toLowerCase().includes(q) || a.trailerNumber.toLowerCase().includes(q);
+      return a.driverName.toLowerCase().includes(q) || a.carrier.toLowerCase().includes(q) || a.loadNumber.toLowerCase().includes(q) || a.trailerNumber.toLowerCase().includes(q) || a.truckNumber.toLowerCase().includes(q) || a.driverPhone.toLowerCase().includes(q);
     });
   }, [arrivals, search, filter]);
 
@@ -115,7 +115,7 @@ export default function Queue() {
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-[#111827]">
             <tr>
-              {["Driver / Carrier", "Load #", "Trailer", "Arrived", "Appointment", "Status", "Dock", "Wait", "Notes"].map((h) => (
+              {["Driver / Carrier", "Load #", "Truck #", "Trailer", "Phone", "Arrived", "Appointment", "Status", "Dock", "Wait", "Notes"].map((h) => (
                 <th key={h} className="text-left text-[10px] font-semibold text-[#6B7A9E] uppercase tracking-wider px-4 py-3 border-b border-[#1E2640] whitespace-nowrap">
                   {h}
                 </th>
@@ -132,7 +132,9 @@ export default function Queue() {
                     <div className="text-xs text-[#6B7A9E] mt-0.5">{a.carrier}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-[#E2E8F0]">{a.loadNumber}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#E2E8F0]">{a.truckNumber}</td>
                   <td className="px-4 py-3 font-mono text-xs text-[#E2E8F0]">{a.trailerNumber}</td>
+                  <td className="px-4 py-3 text-xs text-[#A8B3CF]">{a.driverPhone}</td>
                   <td className="px-4 py-3 text-xs text-[#A8B3CF]">{timeAgo(a.arrivalTime)}</td>
                   <td className={`px-4 py-3 text-xs font-medium ${late ? "text-red-400" : "text-[#A8B3CF]"}`}>
                     {fmtTime(a.appointmentTime)}{late ? " ⚠" : ""}

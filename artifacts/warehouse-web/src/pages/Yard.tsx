@@ -27,7 +27,7 @@ function Section({ title, color, arrivals, count }: { title: string; color: stri
             <div key={a.id} className="px-4 py-3 flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{a.driverName}</div>
-                <div className="text-xs text-[#6B7A9E] mt-0.5 truncate">{a.carrier} · {a.trailerNumber} · {a.loadNumber}</div>
+                <div className="text-xs text-[#6B7A9E] mt-0.5 truncate">{a.carrier} · Truck {a.truckNumber} · Trailer {a.trailerNumber} · {a.loadNumber}</div>
               </div>
               <StatusBadge status={a.status} size="sm" />
               {a.assignedDock && <span className="text-xs font-bold text-blue-400 flex-shrink-0">Dock {a.assignedDock}</span>}

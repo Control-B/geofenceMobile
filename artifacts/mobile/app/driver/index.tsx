@@ -102,7 +102,9 @@ function CreateTripSheet({ visible, onClose, onSave }: {
   const [pickupAddress, setPickupAddress] = useState("");
   const [loadNumber, setLoadNumber] = useState("");
   const [carrier, setCarrier] = useState("");
+  const [truckNumber, setTruckNumber] = useState("");
   const [trailerNumber, setTrailerNumber] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [poNumber, setPoNumber] = useState("");
   const [apptDate, setApptDate] = useState(todayDateStr());
@@ -111,7 +113,7 @@ function CreateTripSheet({ visible, onClose, onSave }: {
 
   const reset = () => {
     setDeliveryFacility(""); setDeliveryAddress(""); setPickupFacility("");
-    setPickupAddress(""); setLoadNumber(""); setCarrier(""); setTrailerNumber("");
+    setPickupAddress(""); setLoadNumber(""); setCarrier(""); setTruckNumber(""); setTrailerNumber(""); setDriverPhone("");
     setReferenceNumber(""); setPoNumber(""); setApptDate(todayDateStr());
     setApptTime(defaultTimeStr()); setErrors({});
   };
@@ -132,7 +134,9 @@ function CreateTripSheet({ visible, onClose, onSave }: {
       pickupAddress: pickupAddress.trim(),
       loadNumber: loadNumber.trim(),
       carrier: carrier.trim(),
+      truckNumber: truckNumber.trim(),
       trailerNumber: trailerNumber.trim(),
+      driverPhone: driverPhone.trim(),
       referenceNumber: referenceNumber.trim(),
       poNumber: poNumber.trim(),
       appointmentTime: parseApptTime(apptDate, apptTime),
@@ -208,11 +212,18 @@ function CreateTripSheet({ visible, onClose, onSave }: {
                     placeholder="LD-123456" error={errors.loadNumber} required />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="trailerNumber" value={trailerNumber} onChange={setTrailerNumber}
-                    placeholder="T-0000" />
+                  <Field label="carrier" value={carrier} onChange={setCarrier} placeholder="e.g. Alliance Transport" />
                 </View>
               </View>
-              <Field label="carrier" value={carrier} onChange={setCarrier} placeholder="e.g. Alliance Transport" />
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Field label="truckNumber" value={truckNumber} onChange={setTruckNumber} placeholder="e.g. IL-2934" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Field label="trailerNumber" value={trailerNumber} onChange={setTrailerNumber} placeholder="T-0000" />
+                </View>
+              </View>
+              <Field label="driverPhone" value={driverPhone} onChange={setDriverPhone} placeholder="e.g. (312) 555-0147" keyboardType="phone-pad" />
               <View style={{ flexDirection: "row", gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Field label="referenceNumber" value={referenceNumber} onChange={setReferenceNumber}
@@ -428,7 +439,9 @@ export default function DriverHomeScreen() {
           <View style={styles.detailGrid}>
             {[
               { label: "Load #", val: currentLoad.loadNumber },
+              { label: "Truck #", val: currentLoad.truckNumber },
               { label: "Trailer", val: currentLoad.trailerNumber },
+              { label: "Phone", val: currentLoad.driverPhone },
               { label: "Reference", val: currentLoad.referenceNumber },
               { label: "PO #", val: currentLoad.poNumber },
             ].map((item) => (
